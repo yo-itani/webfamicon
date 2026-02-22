@@ -62,6 +62,40 @@ impl CPU {
             self.status = self.status & 0b0111_1111;
         }
     }
+
+    pub fn load(&mut self, program: Vec<u8>) {
+        self.memory[0x8000 .. (0x8000 + program.len())].copy_from_slice(&program[..]);
+        self.mem_write_u16(0xFFFC, 0x8000);
+    }
+
+    pub fn reset(&mut self) {
+        self.register_a = 0;
+        self.register_x = 0;
+        self.register_y = 0;
+        self.status = 0;
+        
+        self.program_counter = self.mem_read_u16(0xFFFC);
+    }
+
+    pub fn load_and_run(&mut self, program: Vec<u8>) {
+        self.load(program);
+        self.reset();
+        self.run()
+    }
+
+    pub fn run(&mut self) {
+        loop {
+            let opscode = self.mem_read(self.program_counter);
+            self.program_counter += 1;
+
+            match opscode {
+                0x00 => {
+                    return;
+                }
+                _ => todo!()
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -93,5 +127,12 @@ mod test {
         cpu.update_zero_and_negative_flags(0x80); // 1000 0000
         assert_eq!(cpu.status & 0b1000_0000, 0b1000_0000);
         assert_eq!(cpu.status & 0b0000_0010, 0);
+    }
+
+    #[test]
+    fn test_0x00_brk() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0x00]);
+        // BRK should simply return and stop the execution loop
     }
 }
